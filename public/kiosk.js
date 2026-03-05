@@ -113,82 +113,149 @@ fsBackBtn?.addEventListener("click", closeFullscreen)
 
 const scanInput = document.getElementById("scanInput");
 const scanQrBtn = document.getElementById("scanQrBtn");
+const qrImageInput = document.getElementById("qrImageInput");
 
 const qrOverlay = document.getElementById("qrOverlay");
 const qrCloseBtn = document.getElementById("qrCloseBtn");
 const qrVideo = document.getElementById("qrVideo");
+const qrCameraSelect = document.getElementById("qrCameraSelect");
+const qrPickImageBtn = document.getElementById("qrPickImageBtn");
 
 let qrStream = null;
 let qrRunning = false;
+let qrDetector = null;
+let lastDeviceId = "";
 
 const isTouch = () => window.matchMedia("(pointer: coarse)").matches;
-const canCamera = () => navigator.mediaDevices?.getUserMedia;
+const canLiveCamera = () => navigator.mediaDevices?.getUserMedia && window.isSecureContext;
+const canDetectQr = () => "BarcodeDetector" in window;
 
 function showQrButtonIfSupported() {
-  // pokazuj na telefon/tablet + gdy jest kamera
   if (!scanQrBtn) return;
-  scanQrBtn.style.display = (isTouch() && canCamera()) ? "" : "none";
+  scanQrBtn.style.display = isTouch() ? "" : "none";
 }
 showQrButtonIfSupported();
 window.addEventListener("resize", showQrButtonIfSupported);
 
-async function startQrScanner() {
-  if (!("BarcodeDetector" in window)) {
-    alert("Ta przeglądarka nie wspiera BarcodeDetector. Jeśli to iPad Safari, zrobimy fallback (jsQR).");
+function applyDetectedQr(value) {
+  scanInput.value = value;
+  stopQrScanner();
+  lookup(value);
+  scanInput.select();
+}
+
+async function detectFromImageFile(file) {
+  if (!file) return;
+  if (!canDetectQr()) {
+    setStatus("Twoja przeglądarka nie wspiera skanowania QR z obrazu.", "error");
     return;
   }
 
-  const detector = new BarcodeDetector({ formats: ["qr_code"] });
+  try {
+    qrDetector = qrDetector || new BarcodeDetector({ formats: ["qr_code"] });
+    const bitmap = await createImageBitmap(file);
+    const barcodes = await qrDetector.detect(bitmap);
+    bitmap.close();
+
+    const value = (barcodes?.[0]?.rawValue || "").trim();
+    if (!value) {
+      setStatus("Nie wykryto kodu QR na zdjęciu.", "warn");
+      return;
+    }
+
+    applyDetectedQr(value);
+  } catch (e) {
+    console.error(e);
+    setStatus("Nie udało się odczytać QR ze zdjęcia.", "error");
+  }
+}
+
+async function loadCameraList(selectedDeviceId = "") {
+  if (!qrCameraSelect || !navigator.mediaDevices?.enumerateDevices) return;
+
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const cameras = devices.filter((d) => d.kind === "videoinput");
+
+  qrCameraSelect.innerHTML = "";
+
+  cameras.forEach((cam, idx) => {
+    const opt = document.createElement("option");
+    opt.value = cam.deviceId;
+    opt.textContent = cam.label || `Aparat ${idx + 1}`;
+    qrCameraSelect.appendChild(opt);
+  });
+
+  if (!cameras.length) {
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "Brak kamer";
+    qrCameraSelect.appendChild(opt);
+  }
+
+  if (selectedDeviceId) qrCameraSelect.value = selectedDeviceId;
+}
+
+async function openLiveScanner(deviceId = "") {
+  qrDetector = qrDetector || new BarcodeDetector({ formats: ["qr_code"] });
+
+  const videoConstraints = deviceId
+    ? { deviceId: { exact: deviceId } }
+    : { facingMode: "environment" };
+
+  qrStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
+  qrVideo.srcObject = qrStream;
+  await qrVideo.play();
+
+  await loadCameraList(deviceId || qrStream.getVideoTracks()[0]?.getSettings?.().deviceId || "");
+  lastDeviceId = qrCameraSelect?.value || deviceId || "";
+
+  qrRunning = true;
+  const loop = async () => {
+    if (!qrRunning) return;
+
+    try {
+      const barcodes = await qrDetector.detect(qrVideo);
+      const value = (barcodes?.[0]?.rawValue || "").trim();
+      if (value) return applyDetectedQr(value);
+    } catch {}
+
+    requestAnimationFrame(loop);
+  };
+
+  requestAnimationFrame(loop);
+}
+
+async function startQrScanner() {
+  if (!canDetectQr()) {
+    setStatus("Brak wsparcia skanowania QR w tej przeglądarce.", "error");
+    return;
+  }
+
+  if (!canLiveCamera()) {
+    setStatus("HTTP: otwieram aparat jako zdjęcie do skanowania QR.", "warn");
+    qrImageInput?.click();
+    return;
+  }
 
   qrOverlay.classList.remove("hidden");
   document.body.style.overflow = "hidden";
 
   try {
-    qrStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment" },
-      audio: false
-    });
-
-    qrVideo.srcObject = qrStream;
-    await qrVideo.play();
-
-    qrRunning = true;
-
-    const loop = async () => {
-      if (!qrRunning) return;
-
-      const barcodes = await detector.detect(qrVideo);
-      if (barcodes?.length) {
-        const value = (barcodes[0].rawValue || "").trim();
-        if (value) {
-          scanInput.value = value;
-          stopQrScanner();
-          lookup(value);        // <— pewniej
-          scanInput.select();
-
-        }
-      }
-
-      requestAnimationFrame(loop);
-    };
-
-    requestAnimationFrame(loop);
-
+    await openLiveScanner(lastDeviceId);
   } catch (e) {
     console.error(e);
-    alert("Nie udało się uruchomić kamery (uprawnienia?).");
-    stopQrScanner();
+    setStatus("Nie udało się uruchomić kamery live. Użyj opcji Zdjęcie.", "warn");
   }
 }
 
 function stopQrScanner() {
   qrRunning = false;
 
-  try { qrVideo.pause(); } catch { }
+  try { qrVideo.pause(); } catch {}
   qrVideo.srcObject = null;
 
   if (qrStream) {
-    qrStream.getTracks().forEach(t => t.stop());
+    qrStream.getTracks().forEach((t) => t.stop());
     qrStream = null;
   }
 
@@ -200,3 +267,25 @@ function stopQrScanner() {
 scanQrBtn?.addEventListener("click", startQrScanner);
 qrCloseBtn?.addEventListener("click", stopQrScanner);
 
+qrCameraSelect?.addEventListener("change", async (e) => {
+  const nextId = String(e.target.value || "");
+  if (!nextId || nextId === lastDeviceId) return;
+
+  try {
+    stopQrScanner();
+    qrOverlay.classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+    await openLiveScanner(nextId);
+  } catch (err) {
+    console.error(err);
+    setStatus("Nie udało się przełączyć aparatu.", "error");
+  }
+});
+
+qrPickImageBtn?.addEventListener("click", () => qrImageInput?.click());
+
+qrImageInput?.addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  await detectFromImageFile(file);
+  e.target.value = "";
+});
