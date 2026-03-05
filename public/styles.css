@@ -106,6 +106,26 @@ h1{
   box-shadow: 0 0 0 4px rgba(79,140,255,.12);
 }
 
+@media (max-width: 768px) {
+  .scan{
+    flex-wrap: wrap;
+  }
+
+  .scan input{
+    flex: 1 0 100%;
+  }
+
+  #confirmBtn,
+  #clearBtn{
+    flex: 1 1 calc(50% - 8px);
+    min-width: 0;
+  }
+
+  #scanQrBtn{
+    flex: 0 0 44px;
+  }
+}
+
 .status{
   border-radius:14px;
   padding:12px 14px;
