@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Login</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="login-wrapper">
+
+    <div class="login-card">
+      <h2>Admin Login</h2>
+
+      <form id="loginForm">
+        <input type="text" id="username" placeholder="Login" required />
+        <input type="password" id="password" placeholder="Hasło" required />
+
+        <div class="login-actions">
+          <button type="button" class="secondary" id="backBtn">Powrót</button>
+          <button type="submit" class="primary">Zaloguj</button>
+        </div>
+      </form>
+
+      <p id="error" class="error-text"></p>
+    </div>
+
+  </div>
+
+  <script src="login.js"></script>
+</body>
+
+</html>

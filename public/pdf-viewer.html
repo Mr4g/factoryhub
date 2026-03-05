@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pl">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+        }
+
+        .pdf-wrap {
+            height: 100%;
+            overflow: auto;
+            padding: 10px;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto 12px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="pdf-toolbar">
+        <button id="zoomOut">−</button>
+        <span id="zoomLevel">100%</span>
+        <button id="zoomIn">+</button>
+        <button id="zoomFitWidth">Fit W</button>
+        <button id="zoomFitHeight">Fit H</button>
+
+    </div>
+
+    <div class="pdf-wrap" id="pdfWrap"></div>
+    <script type="module" src="pdf-viewer.js"></script>
+</body>
+
+</html>

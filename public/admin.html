@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pl">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Packing Kiosk - Admin</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <div class="wrap">
+    <header>
+      <div class="admin-header">
+        <div class="admin-title">Panel Administratora</div>
+
+        <div class="admin-actions">
+          <button id="backBtn">Powrót</button>
+          <button id="logoutBtn" class="danger">Wyloguj</button>
+        </div>
+      </div>
+
+
+
+    </header>
+
+    <section id="status" class="status info">Ładuję dane…</section>
+
+    <section class="panel">
+      <h2 style="margin:0 0 10px 0;">Lista materiałów</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Materiał</th>
+            <th>Tytuł</th>
+            <th>Typ</th>
+            <th>Plik</th>
+            <th>Akcje</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </section>
+
+    <section class="panel" style="margin-top: 14px;">
+      <h2 style="margin:0 0 10px 0;">Dodaj / podmień instrukcję</h2>
+
+      <div class="form-grid">
+        <label>Numer materiału</label>
+        <input id="fMaterial" type="text" placeholder="np. 12345678" />
+
+        <label>Tytuł</label>
+        <input id="fTitle" type="text" placeholder="np. Pakowanie karton 10 szt." />
+
+        <label>Typ instrukcji</label>
+        <select id="fType">
+          <option value="html">HTML</option>
+          <option value="pdf">PDF</option>
+        </select>
+
+        <label>Plik</label>
+        <input id="fFile" type="file" accept=".pdf,.html,.htm" />
+      </div>
+
+      <div style="margin-top: 12px; display:flex; gap:10px;">
+        <button id="btnSave" class="btn">Zapisz</button>
+        <button id="btnReset" class="btn">Wyczyść formularz</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+
+</html>
