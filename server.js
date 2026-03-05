@@ -11,6 +11,7 @@ import argon2 from "argon2";
 
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
+const HOST = process.env.HOST || "0.0.0.0";
 
 const rootDir = process.cwd();
 const publicDir = path.join(rootDir, "public");
@@ -232,8 +233,8 @@ app.delete("/api/materials/:materialNo", requireAdmin, (req, res) => {
   }
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Packing Kiosk Server running: http://localhost:${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`Packing Kiosk Server running on ${HOST}:${PORT}`);
 });
 
 const createInitialAdmin = async () => {
