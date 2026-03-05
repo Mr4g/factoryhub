@@ -1,6 +1,7 @@
 const input = document.getElementById("scanInput");
 const status = document.getElementById("status");
 const result = document.getElementById("result");
+const confirmBtn = document.getElementById("confirmBtn");
 
 const mNo = document.getElementById("mNo");
 const mTitle = document.getElementById("mTitle");
@@ -67,14 +68,18 @@ async function lookup(materialNo) {
 
 }
 
+function submitLookup() {
+  const materialNo = input.value.trim();
+  if (!materialNo) return;
+  lookup(materialNo);
+  input.select();
+}
+
 input.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    const materialNo = input.value.trim();
-    if (!materialNo) return;
-    lookup(materialNo);
-    input.select();
-  }
+  if (e.key === "Enter") submitLookup();
 });
+
+confirmBtn?.addEventListener("click", submitLookup);
 
 document.getElementById("clearBtn")?.addEventListener("click", () => {
   closeFullscreen();        // <— ważne
