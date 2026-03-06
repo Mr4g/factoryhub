@@ -106,6 +106,26 @@ h1{
   box-shadow: 0 0 0 4px rgba(79,140,255,.12);
 }
 
+@media (max-width: 768px) {
+  .scan{
+    flex-wrap: wrap;
+  }
+
+  .scan input{
+    flex: 1 0 100%;
+  }
+
+  #confirmBtn,
+  #clearBtn{
+    flex: 1 1 calc(50% - 8px);
+    min-width: 0;
+  }
+
+  #scanQrBtn{
+    flex: 0 0 44px;
+  }
+}
+
 .status{
   border-radius:14px;
   padding:12px 14px;
@@ -570,3 +590,27 @@ input[type="text"]:focus, select:focus, input[type="file"]:focus{
   font-size:18px;
 }
 .icon-btn:hover{ background: rgba(255,255,255,0.15); }
+
+
+.qr-topbar{
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.qr-camera-select{
+  min-width:140px;
+  max-width:40vw;
+  height:38px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.12);
+  color:#fff;
+  padding:0 10px;
+}
+
+@media (max-width: 768px) {
+  .qr-camera-select{
+    flex:1 1 100%;
+    max-width:none;
+  }
+}

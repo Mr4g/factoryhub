@@ -1,6 +1,7 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
+import https from "https";
 import multer from "multer";
 import Database from "better-sqlite3";
 
@@ -11,6 +12,10 @@ import argon2 from "argon2";
 
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
+const HOST = process.env.HOST || "0.0.0.0";
+const SSL_KEY_PATH = process.env.SSL_KEY_PATH;
+const SSL_CERT_PATH = process.env.SSL_CERT_PATH;
+const HTTPS_ENABLED = Boolean(SSL_KEY_PATH && SSL_CERT_PATH);
 
 const rootDir = process.cwd();
 const publicDir = path.join(rootDir, "public");
@@ -61,7 +66,7 @@ app.use(session({
   cookie: {
     httpOnly: true,
     sameSite: "lax",
-    secure: false,
+    secure: HTTPS_ENABLED,
     maxAge: 1000 * 60 * 60 * 8
   }
 }));
@@ -232,9 +237,19 @@ app.delete("/api/materials/:materialNo", requireAdmin, (req, res) => {
   }
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Packing Kiosk Server running: http://localhost:${PORT}`);
-});
+if (HTTPS_ENABLED) {
+  const key = fs.readFileSync(SSL_KEY_PATH, "utf8");
+  const cert = fs.readFileSync(SSL_CERT_PATH, "utf8");
+
+  https.createServer({ key, cert }, app).listen(PORT, HOST, () => {
+    console.log(`Packing Kiosk HTTPS running on https://${HOST}:${PORT}`);
+  });
+} else {
+  app.listen(PORT, HOST, () => {
+    console.log(`Packing Kiosk Server running on http://${HOST}:${PORT}`);
+  });
+  console.log("HTTPS disabled. Set SSL_KEY_PATH and SSL_CERT_PATH to enable HTTPS.");
+}
 
 const createInitialAdmin = async () => {
   const exists = db.prepare("SELECT 1 FROM admin_users WHERE username = ?").get("admin");

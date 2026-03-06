@@ -28,12 +28,15 @@
     <section class="scan">
       <input id="scanInput" type="text" inputmode="numeric" autocomplete="off" autofocus
         placeholder="SCAN HERE… np. 12345678" />
+      <button id="confirmBtn" class="secondary-btn">Potwierdź</button>
       <button id="scanQrBtn" class="icon-btn" type="button" aria-label="Skanuj QR" title="Skanuj QR">
         📷
       </button>
 
       <button id="clearBtn" class="secondary-btn">Wyczyść</button>
     </section>
+
+    <input id="qrImageInput" type="file" accept="image/*" capture="environment" class="hidden" />
 
     <section id="status" class="status info">Gotowe.</section>
 
@@ -64,8 +67,10 @@
   </div>
 
   <div id="qrOverlay" class="fs-overlay hidden">
-    <div class="fs-topbar">
+    <div class="fs-topbar qr-topbar">
       <button id="qrCloseBtn" class="fs-btn">Wróć</button>
+      <select id="qrCameraSelect" class="qr-camera-select"></select>
+      <button id="qrPickImageBtn" class="fs-btn" type="button">Zdjęcie</button>
       <div class="fs-title">Skanuj QR</div>
     </div>
 
