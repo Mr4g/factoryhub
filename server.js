@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
-import https from "https";
+import os from "os";
 import multer from "multer";
 import Database from "better-sqlite3";
 
@@ -12,12 +12,30 @@ import argon2 from "argon2";
 
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
-const HOST = process.env.HOST || "0.0.0.0";
-const SSL_KEY_PATH = process.env.SSL_KEY_PATH;
-const SSL_CERT_PATH = process.env.SSL_CERT_PATH;
-const HTTPS_ENABLED = Boolean(SSL_KEY_PATH && SSL_CERT_PATH);
-
+const HOST = "0.0.0.0";
 const rootDir = process.cwd();
+
+const detectLocalIPv4 = () => {
+  const interfaces = os.networkInterfaces();
+  for (const netEntries of Object.values(interfaces)) {
+    if (!Array.isArray(netEntries)) continue;
+    for (const net of netEntries) {
+      if (net.family === "IPv4" && !net.internal) return net.address;
+    }
+  }
+  return null;
+};
+const localIP = detectLocalIPv4();
+
+const logAccessUrls = (protocol) => {
+  console.log(`Local access: ${protocol}://localhost:${PORT}`);
+  if (localIP) {
+    console.log(`LAN access:   ${protocol}://${localIP}:${PORT}`);
+  } else {
+    console.log("LAN access:   local IPv4 not detected");
+  }
+};
+
 const publicDir = path.join(rootDir, "public");
 const storageDir = path.join(rootDir, "storage");
 const instructionsDir = path.join(storageDir, "instructions");
@@ -66,7 +84,7 @@ app.use(session({
   cookie: {
     httpOnly: true,
     sameSite: "lax",
-    secure: HTTPS_ENABLED,
+    secure: false,
     maxAge: 1000 * 60 * 60 * 8
   }
 }));
@@ -237,19 +255,10 @@ app.delete("/api/materials/:materialNo", requireAdmin, (req, res) => {
   }
 });
 
-if (HTTPS_ENABLED) {
-  const key = fs.readFileSync(SSL_KEY_PATH, "utf8");
-  const cert = fs.readFileSync(SSL_CERT_PATH, "utf8");
-
-  https.createServer({ key, cert }, app).listen(PORT, HOST, () => {
-    console.log(`Packing Kiosk HTTPS running on https://${HOST}:${PORT}`);
-  });
-} else {
-  app.listen(PORT, HOST, () => {
-    console.log(`Packing Kiosk Server running on http://${HOST}:${PORT}`);
-  });
-  console.log("HTTPS disabled. Set SSL_KEY_PATH and SSL_CERT_PATH to enable HTTPS.");
-}
+app.listen(PORT, HOST, () => {
+  console.log(`Packing Kiosk Server running on http://${HOST}:${PORT}`);
+  logAccessUrls("http");
+});
 
 const createInitialAdmin = async () => {
   const exists = db.prepare("SELECT 1 FROM admin_users WHERE username = ?").get("admin");
@@ -267,4 +276,3 @@ const createInitialAdmin = async () => {
 createInitialAdmin().catch(err => {
   console.error("Admin init error:", err);
 });
-
