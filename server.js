@@ -2,6 +2,7 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import https from "https";
+import os from "os";
 import multer from "multer";
 import Database from "better-sqlite3";
 
@@ -12,8 +13,19 @@ import argon2 from "argon2";
 
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
-const HOST = process.env.HOST || "0.0.0.0";
+const HOST = "0.0.0.0";
 const rootDir = process.cwd();
+
+const detectLocalIPv4 = () => {
+  const interfaces = os.networkInterfaces();
+  for (const netEntries of Object.values(interfaces)) {
+    if (!Array.isArray(netEntries)) continue;
+    for (const net of netEntries) {
+      if (net.family === "IPv4" && !net.internal) return net.address;
+    }
+  }
+  return null;
+};
 
 const findLocalMkcertPair = () => {
   const files = fs.readdirSync(rootDir);
@@ -42,6 +54,16 @@ const certFromEnvAndKey = certFromEnv && keyFromEnv
   : null;
 const certConfig = certFromEnvAndKey || findLocalMkcertPair();
 const HTTPS_ENABLED = Boolean(certConfig);
+const localIP = detectLocalIPv4();
+
+const logAccessUrls = (protocol) => {
+  console.log(`Local access: ${protocol}://localhost:${PORT}`);
+  if (localIP) {
+    console.log(`LAN access:   ${protocol}://${localIP}:${PORT}`);
+  } else {
+    console.log("LAN access:   local IPv4 not detected");
+  }
+};
 
 const publicDir = path.join(rootDir, "public");
 const storageDir = path.join(rootDir, "storage");
@@ -269,10 +291,12 @@ if (HTTPS_ENABLED) {
   https.createServer({ key, cert }, app).listen(PORT, HOST, () => {
     console.log(`Packing Kiosk HTTPS running on https://${HOST}:${PORT}`);
     console.log(`HTTPS certificate source: ${certConfig.source} (${certConfig.certPath})`);
+    logAccessUrls("https");
   });
 } else {
   app.listen(PORT, HOST, () => {
     console.log(`Packing Kiosk Server running on http://${HOST}:${PORT}`);
+    logAccessUrls("http");
   });
   console.log("HTTPS disabled. Set SSL_KEY_PATH and SSL_CERT_PATH or place localhost+*.pem and localhost+*-key.pem in project root.");
 }
