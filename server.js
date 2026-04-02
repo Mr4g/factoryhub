@@ -13,11 +13,36 @@ import argon2 from "argon2";
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 const HOST = process.env.HOST || "0.0.0.0";
-const SSL_KEY_PATH = process.env.SSL_KEY_PATH;
-const SSL_CERT_PATH = process.env.SSL_CERT_PATH;
-const HTTPS_ENABLED = Boolean(SSL_KEY_PATH && SSL_CERT_PATH);
-
 const rootDir = process.cwd();
+
+const findLocalMkcertPair = () => {
+  const files = fs.readdirSync(rootDir);
+  const certCandidates = files
+    .filter(name => /^localhost\+\d+\.pem$/i.test(name))
+    .sort((a, b) => b.localeCompare(a));
+
+  for (const certFile of certCandidates) {
+    const keyFile = certFile.replace(/\.pem$/i, "-key.pem");
+    if (files.includes(keyFile)) {
+      return {
+        certPath: path.join(rootDir, certFile),
+        keyPath: path.join(rootDir, keyFile),
+        source: "mkcert-auto"
+      };
+    }
+  }
+
+  return null;
+};
+
+const certFromEnv = process.env.SSL_CERT_PATH;
+const keyFromEnv = process.env.SSL_KEY_PATH;
+const certFromEnvAndKey = certFromEnv && keyFromEnv
+  ? { certPath: certFromEnv, keyPath: keyFromEnv, source: "env" }
+  : null;
+const certConfig = certFromEnvAndKey || findLocalMkcertPair();
+const HTTPS_ENABLED = Boolean(certConfig);
+
 const publicDir = path.join(rootDir, "public");
 const storageDir = path.join(rootDir, "storage");
 const instructionsDir = path.join(storageDir, "instructions");
@@ -238,17 +263,18 @@ app.delete("/api/materials/:materialNo", requireAdmin, (req, res) => {
 });
 
 if (HTTPS_ENABLED) {
-  const key = fs.readFileSync(SSL_KEY_PATH, "utf8");
-  const cert = fs.readFileSync(SSL_CERT_PATH, "utf8");
+  const key = fs.readFileSync(certConfig.keyPath, "utf8");
+  const cert = fs.readFileSync(certConfig.certPath, "utf8");
 
   https.createServer({ key, cert }, app).listen(PORT, HOST, () => {
     console.log(`Packing Kiosk HTTPS running on https://${HOST}:${PORT}`);
+    console.log(`HTTPS certificate source: ${certConfig.source} (${certConfig.certPath})`);
   });
 } else {
   app.listen(PORT, HOST, () => {
     console.log(`Packing Kiosk Server running on http://${HOST}:${PORT}`);
   });
-  console.log("HTTPS disabled. Set SSL_KEY_PATH and SSL_CERT_PATH to enable HTTPS.");
+  console.log("HTTPS disabled. Set SSL_KEY_PATH and SSL_CERT_PATH or place localhost+*.pem and localhost+*-key.pem in project root.");
 }
 
 const createInitialAdmin = async () => {
@@ -267,4 +293,3 @@ const createInitialAdmin = async () => {
 createInitialAdmin().catch(err => {
   console.error("Admin init error:", err);
 });
-
