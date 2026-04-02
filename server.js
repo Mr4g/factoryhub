@@ -1,7 +1,6 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
-import https from "https";
 import os from "os";
 import multer from "multer";
 import Database from "better-sqlite3";
@@ -26,34 +25,6 @@ const detectLocalIPv4 = () => {
   }
   return null;
 };
-
-const findLocalMkcertPair = () => {
-  const files = fs.readdirSync(rootDir);
-  const certCandidates = files
-    .filter(name => /^localhost\+\d+\.pem$/i.test(name))
-    .sort((a, b) => b.localeCompare(a));
-
-  for (const certFile of certCandidates) {
-    const keyFile = certFile.replace(/\.pem$/i, "-key.pem");
-    if (files.includes(keyFile)) {
-      return {
-        certPath: path.join(rootDir, certFile),
-        keyPath: path.join(rootDir, keyFile),
-        source: "mkcert-auto"
-      };
-    }
-  }
-
-  return null;
-};
-
-const certFromEnv = process.env.SSL_CERT_PATH;
-const keyFromEnv = process.env.SSL_KEY_PATH;
-const certFromEnvAndKey = certFromEnv && keyFromEnv
-  ? { certPath: certFromEnv, keyPath: keyFromEnv, source: "env" }
-  : null;
-const certConfig = certFromEnvAndKey || findLocalMkcertPair();
-const HTTPS_ENABLED = Boolean(certConfig);
 const localIP = detectLocalIPv4();
 
 const logAccessUrls = (protocol) => {
@@ -113,7 +84,7 @@ app.use(session({
   cookie: {
     httpOnly: true,
     sameSite: "lax",
-    secure: HTTPS_ENABLED,
+    secure: false,
     maxAge: 1000 * 60 * 60 * 8
   }
 }));
@@ -284,22 +255,10 @@ app.delete("/api/materials/:materialNo", requireAdmin, (req, res) => {
   }
 });
 
-if (HTTPS_ENABLED) {
-  const key = fs.readFileSync(certConfig.keyPath, "utf8");
-  const cert = fs.readFileSync(certConfig.certPath, "utf8");
-
-  https.createServer({ key, cert }, app).listen(PORT, HOST, () => {
-    console.log(`Packing Kiosk HTTPS running on https://${HOST}:${PORT}`);
-    console.log(`HTTPS certificate source: ${certConfig.source} (${certConfig.certPath})`);
-    logAccessUrls("https");
-  });
-} else {
-  app.listen(PORT, HOST, () => {
-    console.log(`Packing Kiosk Server running on http://${HOST}:${PORT}`);
-    logAccessUrls("http");
-  });
-  console.log("HTTPS disabled. Set SSL_KEY_PATH and SSL_CERT_PATH or place localhost+*.pem and localhost+*-key.pem in project root.");
-}
+app.listen(PORT, HOST, () => {
+  console.log(`Packing Kiosk Server running on http://${HOST}:${PORT}`);
+  logAccessUrls("http");
+});
 
 const createInitialAdmin = async () => {
   const exists = db.prepare("SELECT 1 FROM admin_users WHERE username = ?").get("admin");
